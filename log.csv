@@ -1,0 +1,55 @@
+1749143044,create type house 6 1 name str origin str leader str military_strength int wealth int spice_production int,success
+1749143044,create record house Atreides Caladan Duke 8000 5000 150,success
+1749143044,create record house Harkonnen GiediPrime Baron 12000 3000 200,success
+1749143044,create type fremen 5 1 name str tribe str skill_level int allegiance str age int,success
+1749143044,create record fremen Stilgar SietchTabr 9 Atreides 45,success
+1749143044,create record fremen Chani SietchTabr 8 Atreides 30,success
+1749143044,delete record house Corrino,failure
+1749143044,search record fremen Stilgar,success
+1749143044,search record house Atreides,success
+1749143044,delete record fremen Chani,success
+1749143044,search record fremen Chani,failure
+1749144415," "" "" + create type house 6 1 name str origin str leader str military_strength int wealth int spice_production int", failure
+1749144415," "" "" + create record house Atreides Caladan Duke 8000 5000 150", failure
+1749144415," "" "" + create record house Harkonnen GiediPrime Baron 12000 3000 200", failure
+1749144415," "" "" + create type fremen 5 1 name str tribe str skill_level int allegiance str age int", failure
+1749144415," "" "" + create record fremen Stilgar SietchTabr 9 Atreides 45", failure
+1749144415," "" "" + create record fremen Chani SietchTabr 8 Atreides 30", success
+1749144415," "" "" + delete record house Corrino", failure
+1749144415," "" "" + search record fremen Stilgar", success
+1749144415," "" "" + search record house Atreides", success
+1749144415," "" "" + delete record fremen Chani", success
+1749144415," "" "" + search record fremen Chani", failure
+1749144581 ,create type house 6 1 name str origin str leader str military_strength int wealth int spice_production int, failure
+1749144581 ,create record house Atreides Caladan Duke 8000 5000 150, failure
+1749144581 ,create record house Harkonnen GiediPrime Baron 12000 3000 200, failure
+1749144581 ,create type fremen 5 1 name str tribe str skill_level int allegiance str age int, failure
+1749144581 ,create record fremen Stilgar SietchTabr 9 Atreides 45, failure
+1749144581 ,create record fremen Chani SietchTabr 8 Atreides 30, success
+1749144581 ,delete record house Corrino, failure
+1749144581 ,search record fremen Stilgar, success
+1749144581 ,search record house Atreides, success
+1749144581 ,delete record fremen Chani, success
+1749144581 ,search record fremen Chani, failure
+1749144643, create type house 6 1 name str origin str leader str military_strength int wealth int spice_production int, failure
+1749144643, create record house Atreides Caladan Duke 8000 5000 150, failure
+1749144643, create record house Harkonnen GiediPrime Baron 12000 3000 200, failure
+1749144643, create type fremen 5 1 name str tribe str skill_level int allegiance str age int, failure
+1749144643, create record fremen Stilgar SietchTabr 9 Atreides 45, failure
+1749144643, create record fremen Chani SietchTabr 8 Atreides 30, success
+1749144643, delete record house Corrino, failure
+1749144643, search record fremen Stilgar, success
+1749144643, search record house Atreides, success
+1749144643, delete record fremen Chani, success
+1749144643, search record fremen Chani, failure
+1749144695, create type house 6 1 name str origin str leader str military_strength int wealth int spice_production int, failure
+1749144695, create record house Atreides Caladan Duke 8000 5000 150, failure
+1749144695, create record house Harkonnen GiediPrime Baron 12000 3000 200, failure
+1749144695, create type fremen 5 1 name str tribe str skill_level int allegiance str age int, failure
+1749144695, create record fremen Stilgar SietchTabr 9 Atreides 45, failure
+1749144695, create record fremen Chani SietchTabr 8 Atreides 30, success
+1749144695, delete record house Corrino, failure
+1749144695, search record fremen Stilgar, success
+1749144695, search record house Atreides, success
+1749144695, delete record fremen Chani, success
+1749144695, search record fremen Chani, failure
