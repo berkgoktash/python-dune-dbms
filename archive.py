@@ -3,6 +3,7 @@ import sys
 import time
 import struct
 import csv
+import re
 from typing import Dict, List, Tuple, Optional, Any
 
 class DuneArchive:
@@ -16,15 +17,15 @@ class DuneArchive:
         self.MAX_FIELD_NAME_LENGTH = 20
         self.MAX_STRING_LENGTH = 50
         
-        # System catalog to store type definitions
+        # System catalog
         self.catalog = {}  # type_name -> type_info
         self.catalog_file = "catalog.dat"
         
-        # Load existing catalog if it exists
+        # Load existing catalog
         self._load_catalog()
     
     def _load_catalog(self):
-        """Load the system catalog from file"""
+        # Load the system catalog
         if os.path.exists(self.catalog_file):
             try:
                 with open(self.catalog_file, 'rb') as f:
@@ -47,7 +48,7 @@ class DuneArchive:
                             primary_key_order = struct.unpack('I', data[offset:offset+4])[0]
                             offset += 4
                             
-                            # Read fields
+                            # Read fields (name, type)
                             fields = []
                             for i in range(num_fields):
                                 field_name_len = struct.unpack('I', data[offset:offset+4])[0]
@@ -62,16 +63,17 @@ class DuneArchive:
                                 
                                 fields.append((field_name, field_type))
                             
+                            # Add to catalog
                             self.catalog[type_name] = {
                                 'fields': fields,
                                 'primary_key_order': primary_key_order,
                                 'record_size': self._calculate_record_size(fields)
                             }
             except:
-                pass  # If catalog is corrupted, start fresh
+                pass 
     
     def _save_catalog(self):
-        """Save the system catalog to file"""
+        # Save the system catalog
         with open(self.catalog_file, 'wb') as f:
             for type_name, type_info in self.catalog.items():
                 # Write type name
@@ -94,7 +96,7 @@ class DuneArchive:
                     f.write(field_type_bytes)
     
     def _calculate_record_size(self, fields: List[Tuple[str, str]]) -> int:
-        """Calculate the fixed size of a record based on its fields"""
+        # Calculate the fixed size of a record based on its fields
         size = 1  # validity flag (1 byte)
         for field_name, field_type in fields:
             if field_type == 'int':
@@ -104,20 +106,20 @@ class DuneArchive:
         return size
     
     def _get_data_file_path(self, type_name: str) -> str:
-        """Get the data file path for a given type"""
+        # Get the data file path for a given type
         return f"{type_name}.dat"
     
     def _create_page_header(self, page_number: int, num_records: int, bitmap: int) -> bytes:
-        """Create a page header (12 bytes)"""
+        # Create a page header (12 bytes)
         # page_number(4) + num_records(4) + bitmap(4)
         return struct.pack('III', page_number, num_records, bitmap)
     
     def _parse_page_header(self, header_data: bytes) -> Tuple[int, int, int]:
-        """Parse page header"""
+        # Parse page header
         return struct.unpack('III', header_data[:12])
     
     def _serialize_record(self, type_name: str, values: List[str]) -> bytes:
-        """Serialize a record to bytes"""
+        # Serialize a record to bytes
         type_info = self.catalog[type_name]
         fields = type_info['fields']
         
@@ -129,7 +131,7 @@ class DuneArchive:
                 value = int(values[i])
                 record_data += struct.pack('i', value)
             elif field_type == 'str':
-                value = values[i][:self.MAX_STRING_LENGTH-1]  # ensure it fits
+                value = values[i][:self.MAX_STRING_LENGTH-1]  # Ensure it fits
                 # Pad string to fixed length
                 padded_value = value.ljust(self.MAX_STRING_LENGTH, '\0')
                 record_data += padded_value.encode('utf-8')
@@ -137,7 +139,7 @@ class DuneArchive:
         return record_data
     
     def _deserialize_record(self, type_name: str, record_data: bytes) -> List[str]:
-        """Deserialize a record from bytes"""
+        # Deserialize a record from bytes
         type_info = self.catalog[type_name]
         fields = type_info['fields']
         
@@ -163,7 +165,7 @@ class DuneArchive:
         return values
     
     def _load_page(self, type_name: str, page_number: int) -> Tuple[Optional[bytes], int, int]:
-        """Load a specific page from file"""
+        # Load a specific page from file
         file_path = self._get_data_file_path(type_name)
         if not os.path.exists(file_path):
             return None, 0, 0
@@ -182,7 +184,7 @@ class DuneArchive:
             return page_data, num_records, bitmap
     
     def _save_page(self, type_name: str, page_number: int, page_data: bytes):
-        """Save a page to file"""
+        # Save a page to file
         file_path = self._get_data_file_path(type_name)
         
         # Create file if it doesn't exist or extend it if necessary
@@ -204,13 +206,13 @@ class DuneArchive:
             f.write(page_data)
     
     def _find_primary_key_value(self, type_name: str, values: List[str]) -> str:
-        """Extract the primary key value from record values"""
+        # Extract the primary key value from record values
         type_info = self.catalog[type_name]
         primary_key_order = type_info['primary_key_order']
         return values[primary_key_order - 1]  # Convert to 0-based index
     
     def _log_operation(self, operation: str, success: bool):
-        """Log an operation to the CSV log file"""
+        # Log an operation to the CSV log file
         timestamp = int(time.time()) 
         status = "success" if success else "failure"
         
@@ -219,10 +221,32 @@ class DuneArchive:
             writer = csv.writer(csvfile)
             writer.writerow([f"{timestamp}", f" {operation}", f" {status}"])
     
+    def _is_valid_name(self, name: str) -> bool:
+        # Validate type names and field names
+        # Must contain at least one letter and only letters/digits
+        return bool(re.match(r'^(?=.*[a-zA-Z])[a-zA-Z0-9]+$', name))
+
+    def _is_valid_string_value(self, value: str) -> bool:
+        # Validate string field values
+        # Only letters and digits allowed
+        return bool(re.match(r'^[a-zA-Z0-9]+$', value))
+
+    def _is_valid_int_value(self, value: str) -> bool:
+        # Validate integer field values
+        try:
+            int(value)
+            return True
+        except ValueError:
+            return False
+
     def create_type(self, type_name: str, num_fields: int, primary_key_order: int, field_specs: List[str]) -> bool:
-        """Create a new type (table)"""
+        # Create a new type (table)
         # Check if type already exists
         if type_name in self.catalog:
+            return False
+        
+        # Validate type name
+        if not self._is_valid_name(type_name):
             return False
         
         # Validate inputs
@@ -238,6 +262,10 @@ class DuneArchive:
         for i in range(0, len(field_specs), 2):
             field_name = field_specs[i]
             field_type = field_specs[i + 1]
+            
+            # Validate field name
+            if not self._is_valid_name(field_name):
+                return False
             
             if len(field_name) > self.MAX_FIELD_NAME_LENGTH:
                 return False
@@ -262,13 +290,22 @@ class DuneArchive:
         return True
     
     def create_record(self, type_name: str, values: List[str]) -> bool:
-        """Create a new record"""
+        # Create a new record
         if type_name not in self.catalog:
             return False
         
         type_info = self.catalog[type_name]
         if len(values) != len(type_info['fields']):
             return False
+        
+        # Validate values match their field types
+        for i, ((field_name, field_type), value) in enumerate(zip(type_info['fields'], values)):
+            if field_type == 'int':
+                if not self._is_valid_int_value(value):
+                    return False
+            elif field_type == 'str':
+                if not self._is_valid_string_value(value):
+                    return False
         
         # Get primary key value
         primary_key_value = self._find_primary_key_value(type_name, values)
@@ -323,7 +360,7 @@ class DuneArchive:
                 return False
     
     def _search_record_internal(self, type_name: str, primary_key: str) -> Optional[List[str]]:
-        """Internal method to search for a record"""
+        # Internal method to search for a record
         if type_name not in self.catalog:
             return None
         
@@ -354,11 +391,11 @@ class DuneArchive:
         return None
     
     def search_record(self, type_name: str, primary_key: str) -> Optional[List[str]]:
-        """Search for a record by primary key"""
+        # Search for a record by primary key
         return self._search_record_internal(type_name, primary_key)
     
     def delete_record(self, type_name: str, primary_key: str) -> bool:
-        """Delete a record by primary key"""
+        # Delete a record by primary key
         if type_name not in self.catalog:
             return False
         
@@ -403,7 +440,7 @@ class DuneArchive:
 
 def main():
     if len(sys.argv) != 2:
-        print("Usage: python3 archive.py <input_file_path>")
+        print("Usage: python archive.py <input_file_path>")
         return
     
     input_file_path = sys.argv[1]
