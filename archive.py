@@ -10,12 +10,12 @@ class DuneArchive:
     def __init__(self):
         # System constants
         self.PAGE_SIZE = 4096  # bytes
-        self.MAX_RECORDS_PER_PAGE = 10
-        self.MAX_PAGES_PER_FILE = 100
-        self.MAX_FIELDS_PER_TYPE = 10
-        self.MAX_TYPE_NAME_LENGTH = 12
-        self.MAX_FIELD_NAME_LENGTH = 20
-        self.MAX_STRING_LENGTH = 50
+        self.MAX_RECORDS_PER_PAGE = 10 # up to 10 records per page
+        self.MAX_PAGES_PER_FILE = 100 # decided to include up to 100 pages per file for the sake of simplicity and performance
+        self.MAX_FIELDS_PER_TYPE = 10 # at least 6 fields
+        self.MAX_TYPE_NAME_LENGTH = 12 # at least 12 characters
+        self.MAX_FIELD_NAME_LENGTH = 20 # at least 20 characters
+        self.MAX_STRING_LENGTH = 100 # decided to include up to 100 characters
         
         # System catalog
         self.catalog = {}  # type_name -> type_info
@@ -336,7 +336,7 @@ class DuneArchive:
             # Find free slot
             free_slot = None
             for slot in range(self.MAX_RECORDS_PER_PAGE):
-                if not (bitmap & (1 << slot)):
+                if not (bitmap & (1 << slot)): # If the slot is not occupied (bitmap is a bitmask)
                     free_slot = slot
                     break
             
@@ -346,7 +346,7 @@ class DuneArchive:
                 page_data[record_offset:record_offset + len(record_data)] = record_data
                 
                 # Update bitmap and header
-                bitmap |= (1 << free_slot)
+                bitmap = bitmap | (1 << free_slot) # Set the bit at the free slot to 1
                 num_records += 1
                 header = self._create_page_header(page_number, num_records, bitmap)
                 page_data[:12] = header
@@ -378,8 +378,8 @@ class DuneArchive:
             
             # Check each slot
             for slot in range(self.MAX_RECORDS_PER_PAGE):
-                if bitmap & (1 << slot):  # Slot is occupied
-                    record_offset = 12 + slot * type_info['record_size']
+                if bitmap & (1 << slot):  # If the slot is not occupied (bitmap is a bitmask)
+                    record_offset = 12 + slot * type_info['record_size'] # Calculate the offset of the record (12 bytes for the header)
                     record_data = page_data[record_offset:record_offset + type_info['record_size']]
                     
                     values = self._deserialize_record(type_name, record_data)
@@ -415,8 +415,8 @@ class DuneArchive:
             
             # Check each slot
             for slot in range(self.MAX_RECORDS_PER_PAGE):
-                if bitmap & (1 << slot):  # Slot is occupied
-                    record_offset = 12 + slot * type_info['record_size']
+                if bitmap & (1 << slot):  # If the slot is not occupied (bitmap is a bitmask)
+                    record_offset = 12 + slot * type_info['record_size'] # Calculate the offset of the record (12 bytes for the header)
                     record_data = page_data[record_offset:record_offset + type_info['record_size']]
                     
                     values = self._deserialize_record(type_name, record_data)
@@ -425,7 +425,7 @@ class DuneArchive:
                         page_data[record_offset] = 0  # Set validity flag to 0
                         
                         # Update bitmap and header
-                        bitmap &= ~(1 << slot)  # Clear bit
+                        bitmap = bitmap & ~(1 << slot)  # Set the bit at the slot to 0
                         num_records -= 1
                         header = self._create_page_header(page_number, num_records, bitmap)
                         page_data[:12] = header
@@ -440,7 +440,7 @@ class DuneArchive:
 
 def main():
     if len(sys.argv) != 2:
-        print("Usage: python archive.py <input_file_path>")
+        print("Usage: python3 archive.py <input_file_path>")
         return
     
     input_file_path = sys.argv[1]
@@ -458,39 +458,67 @@ def main():
                     continue
                 
                 parts = line.split()
-                operation_type = parts[0]
+                if len(parts) < 2:  # Invalid command format
+                    archive._log_operation(line, False)
+                    continue
                 
-                if operation_type == 'create' and len(parts) > 1:
-                    if parts[1] == 'type':
-                        # create type <type-name> <number-of-fields> <primary-key-order> <field1-name> <field1-type> ...
-                        type_name = parts[2]
-                        num_fields = int(parts[3])
-                        primary_key_order = int(parts[4])
-                        field_specs = parts[5:]
-                        
-                        success = archive.create_type(type_name, num_fields, primary_key_order, field_specs)
-                        archive._log_operation(line, success)
-                        
-                    elif parts[1] == 'record':
-                        # create record <type-name> <field1-value> <field2-value> ...
+                operation_type = parts[0]
+                operation = parts[1]
+                
+                # Handle create operations
+                if operation_type == 'create':
+                    if operation == 'type':
+                        if len(parts) < 5:  # Not enough parameters for type creation
+                            archive._log_operation(line, False)
+                            continue
+                        try:
+                            type_name = parts[2]
+                            num_fields = int(parts[3])
+                            primary_key_order = int(parts[4])
+                            field_specs = parts[5:]
+                            
+                            if len(field_specs) != 2 * num_fields:  # Invalid number of field specifications
+                                archive._log_operation(line, False)
+                                continue
+                            
+                            success = archive.create_type(type_name, num_fields, primary_key_order, field_specs)
+                            archive._log_operation(line, success)
+                        except (ValueError, IndexError):
+                            archive._log_operation(line, False)
+                            continue
+                            
+                    elif operation == 'record':
+                        if len(parts) < 3:  # Not enough parameters for record creation
+                            archive._log_operation(line, False)
+                            continue
                         type_name = parts[2]
                         values = parts[3:]
                         
+                        if type_name not in archive.catalog:  # Type doesn't exist
+                            archive._log_operation(line, False)
+                            continue
+                            
+                        if len(values) != len(archive.catalog[type_name]['fields']):  # Wrong number of values
+                            archive._log_operation(line, False)
+                            continue
+                            
                         success = archive.create_record(type_name, values)
                         archive._log_operation(line, success)
+                    else:
+                        archive._log_operation(line, False)  # Invalid create operation
                 
-                elif operation_type == 'delete' and parts[1] == 'record':
-                    # delete record <type-name> <primary-key>
+                # Handle search operation
+                elif operation_type == 'search' and operation == 'record':
+                    if len(parts) != 4:  # Wrong number of parameters for search
+                        archive._log_operation(line, False)
+                        continue
+                        
                     type_name = parts[2]
                     primary_key = parts[3]
                     
-                    success = archive.delete_record(type_name, primary_key)
-                    archive._log_operation(line, success)
-                
-                elif operation_type == 'search' and parts[1] == 'record':
-                    # search record <type-name> <primary-key>
-                    type_name = parts[2]
-                    primary_key = parts[3]
+                    if type_name not in archive.catalog:  # Type doesn't exist
+                        archive._log_operation(line, False)
+                        continue
                     
                     result = archive.search_record(type_name, primary_key)
                     success = result is not None
@@ -501,6 +529,26 @@ def main():
                             out_f.write(' '.join(result) + '\n')
                     
                     archive._log_operation(line, success)
+                
+                # Handle delete operation
+                elif operation_type == 'delete' and operation == 'record':
+                    if len(parts) != 4:  # Wrong number of parameters for delete
+                        archive._log_operation(line, False)
+                        continue
+                        
+                    type_name = parts[2]
+                    primary_key = parts[3]
+                    
+                    if type_name not in archive.catalog:  # Type doesn't exist
+                        archive._log_operation(line, False)
+                        continue
+                    
+                    success = archive.delete_record(type_name, primary_key)
+                    archive._log_operation(line, success)
+                
+                # Handle invalid operation type
+                else:
+                    archive._log_operation(line, False)
     
     except Exception as e:
         print(f"Error processing input file: {e}")

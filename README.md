@@ -26,7 +26,7 @@ delete record <type-name> <primary-key>
 
 2. Run the program:
 ```bash
-python archive.py input.txt
+python3 archive.py input.txt
 ```
 
 ## Output
